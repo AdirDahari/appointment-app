@@ -1,0 +1,43 @@
+# --- Python / FastAPI backend ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite3
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node / React / Vite frontend ---
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# --- Credentials / secrets (Google, WhatsApp) ---
+secret/
+secrets/
+credentials.json
+service-account*.json
+*.pem
+*.key
+
+# --- Internal working docs (kept locally, not published) ---
+docs/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+npm-debug.log*
