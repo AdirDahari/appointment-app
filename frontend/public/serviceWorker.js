@@ -1,4 +1,4 @@
-const CACHE_NAME = 'appointment-app-v4'
+const CACHE_NAME = 'appointment-app-v5'
 const APP_SHELL = [
   '/',
   '/manifest.json',
@@ -35,7 +35,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
   // Live data always goes to the network — never serve stale customers/appointments
-  if (url.pathname.startsWith('/customers') || url.pathname.startsWith('/appointments')) return
+  if (['/customers', '/appointments', '/auth', '/push', '/webhook', '/health'].some((p) => url.pathname.startsWith(p))) return
 
   event.respondWith(
     (async () => {
@@ -73,5 +73,37 @@ self.addEventListener('fetch', (event) => {
         return new Response('', { status: 504, statusText: 'Offline' })
       }
     })(),
+  )
+})
+
+// ---------- Web Push: the owner's phone learns that a customer replied ----------
+self.addEventListener('push', (event) => {
+  let data = { title: 'ניהול תורים', body: '', url: '/' }
+  try {
+    data = { ...data, ...event.data.json() }
+  } catch {
+    if (event.data) data.body = event.data.text()
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      dir: 'rtl',
+      lang: 'he',
+      data: { url: data.url },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = new URL(event.notification.data?.url || '/', self.location.origin).href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => client.url.startsWith(self.location.origin))
+      if (existing) return existing.focus()
+      return self.clients.openWindow(target)
+    }),
   )
 })

@@ -3,7 +3,8 @@ import { deleteAppointment, getAppointments } from '../api/appointmentsApi'
 import { getCustomers } from '../api/customersApi'
 import AppointmentForm from '../components/AppointmentForm'
 import AppointmentRow from '../components/AppointmentRow'
-import { CalendarIcon, ChevronLeftIcon, PlusIcon, SparkIcon } from '../components/Icons'
+import SettingsSheet from '../components/SettingsSheet'
+import { CalendarIcon, ChevronLeftIcon, GearIcon, PlusIcon, SparkIcon } from '../components/Icons'
 
 const OWNER_NAME = 'גלי'
 
@@ -21,7 +22,7 @@ function greetingForHour(hour) {
   return 'לילה טוב'
 }
 
-function HomePage({ onNavigate }) {
+function HomePage({ onNavigate, username, onLogout }) {
   const [appointments, setAppointments] = useState([])
   const [customerCount, setCustomerCount] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -29,6 +30,7 @@ function HomePage({ onNavigate }) {
   const [warning, setWarning] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingAppointment, setEditingAppointment] = useState(null)
+  const [showSettings, setShowSettings] = useState(false)
 
   async function loadData() {
     setLoading(true)
@@ -99,7 +101,12 @@ function HomePage({ onNavigate }) {
           </h1>
           <p className="greeting-sub">{todayLabel}</p>
         </div>
-        <img className="greeting-logo" src="/logo.png" alt="גלי לק ג'יל" width="56" height="56" />
+        <div className="greeting-side">
+          <img className="greeting-logo" src="/logo.png" alt="גלי לק ג'יל" width="56" height="56" />
+          <button type="button" className="icon-btn" aria-label="הגדרות" onClick={() => setShowSettings(true)}>
+            <GearIcon size={18} />
+          </button>
+        </div>
       </header>
 
       <section className="stat-card" aria-label="סיכום">
@@ -193,6 +200,10 @@ function HomePage({ onNavigate }) {
 
       {showForm && (
         <AppointmentForm appointment={editingAppointment} onSaved={handleSaved} onCancel={closeForm} />
+      )}
+
+      {showSettings && (
+        <SettingsSheet username={username} onLogout={onLogout} onClose={() => setShowSettings(false)} />
       )}
     </main>
   )

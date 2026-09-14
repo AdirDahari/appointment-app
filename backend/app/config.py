@@ -23,6 +23,29 @@ class Settings(BaseSettings):
 
     app_name: str = "Appointment App"
 
+    # SQLite for development; point at Supabase/Postgres in production, e.g.
+    # postgresql+psycopg://user:pass@host:5432/postgres?sslmode=require
+    database_url: str = "sqlite:///./appointment_app.db"
+
+    # Owner login (Stage 4). One account — the business owner.
+    owner_username: str
+    owner_password: str
+    # Signs session tokens. Rotating it logs the owner out everywhere.
+    secret_key: str
+    # How long a session lasts without the app being opened. Every open
+    # refreshes it, so in practice the owner logs in once.
+    session_days: int = 365
+
+    # Browser origins allowed to call the API when the frontend is hosted
+    # elsewhere (e.g. Vercel). Comma-separated. Empty when served same-origin.
+    frontend_origins: str = ""
+
+    # Web Push (Stage 4) — VAPID keys, generated with
+    # `python -m app.scripts.generate_vapid`. Empty disables push.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:owner@example.com"
+
     google_service_account_file: str
     google_calendar_id: str
 
@@ -48,6 +71,14 @@ class Settings(BaseSettings):
         if not path.is_absolute():
             path = (BASE_DIR / path).resolve()
         return str(path)
+
+    @property
+    def frontend_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+
+    @property
+    def push_enabled(self) -> bool:
+        return bool(self.vapid_public_key and self.vapid_private_key)
 
     class Config:
         env_file = ".env"

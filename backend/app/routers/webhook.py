@@ -9,6 +9,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.customer import Customer
+from app.services import push_service
 from app.services.whatsapp_service import normalize_phone_number
 
 logger = logging.getLogger(__name__)
@@ -157,6 +158,14 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
             appointment.id,
             new_status.value,
         )
+
+        # Tell the owner's phone. A push failure must never turn into a webhook
+        # error — the status is already saved.
+        try:
+            push_service.notify_status_change(db, customer, appointment, new_status)
+        except Exception:
+            logger.exception("Owner notification failed")
+
         return {"status": "updated", "appointment_id": appointment.id, "new_status": new_status.value}
     except Exception:
         logger.exception("Webhook processing failed")

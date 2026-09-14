@@ -44,6 +44,8 @@ export default defineConfig({
     proxy: {
       '/customers': BACKEND_URL,
       '/appointments': BACKEND_URL,
+      '/auth': BACKEND_URL,
+      '/push': BACKEND_URL,
     },
   },
 })
