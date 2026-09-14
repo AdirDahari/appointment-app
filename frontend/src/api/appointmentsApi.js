@@ -3,7 +3,13 @@ const BASE_URL = '/appointments'
 async function parseErrorMessage(response) {
   try {
     const data = await response.json()
-    return data.detail || 'שגיאה לא צפויה'
+    const detail = data.detail
+    // FastAPI validation errors (422) arrive as a list of {msg, loc, ...}.
+    if (Array.isArray(detail)) {
+      const first = detail[0]?.msg || ''
+      return first.replace(/^Value error, /, '') || 'הנתונים שהוזנו אינם תקינים'
+    }
+    return detail || 'שגיאה לא צפויה'
   } catch {
     return 'שגיאה לא צפויה'
   }

@@ -2,32 +2,39 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.customer import Customer
 from app.schemas.customer import CustomerCreate, CustomerDetail, CustomerOut, CustomerUpdate
+from app.services import calendar_service
+from app.services.whatsapp_service import normalize_phone_number
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
 
+def _find_phone_conflict(db: Session, phone_number: str, exclude_id: Optional[int] = None) -> Optional[Customer]:
+    """A customer whose number is the same once formatting is stripped.
+
+    "050-777-7777" and "0507777777" are one phone; the webhook matches replies by
+    the normalized number, so two customers sharing it would swallow each other's
+    replies.
+    """
+    target = normalize_phone_number(phone_number)
+    for customer in db.query(Customer).all():
+        if customer.id == exclude_id:
+            continue
+        if normalize_phone_number(customer.phone_number) == target:
+            return customer
+    return None
+
+
 @router.post("", response_model=CustomerOut, status_code=201)
 def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)):
-    existing = (
-        db.query(Customer)
-        .filter(
-            or_(
-                Customer.full_name == payload.full_name,
-                Customer.phone_number == payload.phone_number,
-            )
-        )
-        .first()
-    )
-    if existing:
-        if existing.full_name == payload.full_name:
-            raise HTTPException(status_code=400, detail="שם הלקוח כבר קיים במערכת")
+    if db.query(Customer).filter(Customer.full_name == payload.full_name).first():
+        raise HTTPException(status_code=400, detail="שם הלקוח כבר קיים במערכת")
+    if _find_phone_conflict(db, payload.phone_number):
         raise HTTPException(status_code=400, detail="מספר הטלפון כבר קיים במערכת")
 
     customer = Customer(full_name=payload.full_name, phone_number=payload.phone_number)
@@ -84,14 +91,8 @@ def update_customer(customer_id: int, payload: CustomerUpdate, db: Session = Dep
         if conflict:
             raise HTTPException(status_code=400, detail="שם הלקוח כבר קיים במערכת")
 
-    if "phone_number" in data:
-        conflict = (
-            db.query(Customer)
-            .filter(Customer.phone_number == data["phone_number"], Customer.id != customer_id)
-            .first()
-        )
-        if conflict:
-            raise HTTPException(status_code=400, detail="מספר הטלפון כבר קיים במערכת")
+    if "phone_number" in data and _find_phone_conflict(db, data["phone_number"], exclude_id=customer_id):
+        raise HTTPException(status_code=400, detail="מספר הטלפון כבר קיים במערכת")
 
     for field, value in data.items():
         setattr(customer, field, value)
@@ -108,11 +109,13 @@ def delete_customer(customer_id: int, force: bool = False, db: Session = Depends
         raise HTTPException(status_code=404, detail="הלקוח לא נמצא")
 
     if not force:
+        # Local time, like everywhere else in the app — appointment_datetime is
+        # stored as naive local time.
         has_future_appointment = (
             db.query(Appointment)
             .filter(
                 Appointment.customer_id == customer_id,
-                Appointment.appointment_datetime > datetime.utcnow(),
+                Appointment.appointment_datetime > datetime.now(),
                 Appointment.status != AppointmentStatus.cancelled,
             )
             .first()
@@ -122,6 +125,12 @@ def delete_customer(customer_id: int, force: bool = False, db: Session = Depends
                 status_code=409,
                 detail="ללקוח יש תורים עתידיים. שלחו force=true כדי למחוק בכל זאת",
             )
+
+    # The DB cascade removes the appointments; their calendar events must go too,
+    # otherwise they linger in Google Calendar with no appointment behind them.
+    for appointment in customer.appointments:
+        if appointment.google_event_id:
+            calendar_service.delete_event(appointment.google_event_id)
 
     db.delete(customer)
     db.commit()

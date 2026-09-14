@@ -24,6 +24,14 @@ function groupByDay(appointments) {
   return groups
 }
 
+// The list is the "what's next" view: an appointment whose time has passed
+// drops out of it (it stays in the DB and in the calendar view). Times are
+// naive local ISO strings, so `new Date()` parses them in local time.
+function upcomingOnly(appointments) {
+  const now = Date.now()
+  return appointments.filter((appointment) => new Date(appointment.appointment_datetime).getTime() >= now)
+}
+
 function AppointmentsPage() {
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -81,6 +89,8 @@ function AppointmentsPage() {
     }
   }
 
+  const upcomingAppointments = upcomingOnly(appointments)
+
   return (
     <main className="page">
       <div className="toolbar">
@@ -114,7 +124,7 @@ function AppointmentsPage() {
         <div className="empty">טוען...</div>
       ) : view === 'calendar' ? (
         <AppointmentsCalendarView appointments={appointments} onEdit={openEditForm} onDelete={handleDelete} />
-      ) : appointments.length === 0 ? (
+      ) : upcomingAppointments.length === 0 ? (
         <div className="empty">
           <span className="empty-icon">
             <CalendarIcon size={24} />
@@ -124,7 +134,7 @@ function AppointmentsPage() {
         </div>
       ) : (
         <div className="section">
-          {groupByDay(appointments).map((group) => (
+          {groupByDay(upcomingAppointments).map((group) => (
             <Fragment key={group.key}>
               <div className="day-label">{group.label}</div>
               <ul className="stack">
