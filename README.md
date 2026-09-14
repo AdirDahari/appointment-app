@@ -157,11 +157,29 @@ opens the app on tap.
 
 The backend and frontend can live together or apart:
 
-**Single server (simplest).** Build the frontend (`npm run build`) next to the
-backend; if `frontend/dist/index.html` exists the API serves it from `/` with
-an SPA fallback, so one HTTPS origin covers the app, the API, the service
-worker and the webhook. No CORS needed. Run `uvicorn app.main:app` behind a
-reverse proxy (nginx/Caddy) that terminates TLS — e.g. on EC2.
+**Single server (simplest, the intended layout).** Build the frontend
+(`npm run build`) next to the backend; if `frontend/dist/index.html` exists the
+API serves it from `/` with an SPA fallback, so one HTTPS origin covers the
+app, the API, the service worker and the webhook. No CORS needed.
+
+`deploy/` has everything for an Ubuntu EC2 instance:
+
+| File | Purpose |
+|---|---|
+| `deploy/setup-ec2.sh <domain>` | one-shot install: Python, Node, Caddy, clone to `/opt/appointment-app`, venv, frontend build, systemd + Caddy config |
+| `deploy/update.sh` | redeploy the latest `main`: pull, install, rebuild, restart |
+| `deploy/appointment-app.service` | systemd unit running uvicorn on `127.0.0.1:8000` |
+| `deploy/Caddyfile` | HTTPS (automatic Let's Encrypt) reverse proxy to uvicorn |
+
+Prerequisites: an Elastic IP, a DNS A record for the domain pointing at it,
+and ports 80/443 open in the security group.
+
+**Going live before every integration exists.** Only `OWNER_USERNAME`,
+`OWNER_PASSWORD` and `SECRET_KEY` are required to start. With the Google or
+WhatsApp variables empty the app runs with that integration switched off and
+says so in the startup log: appointments save with a calendar warning,
+reminders are skipped, the webhook refuses verification. Fill in `.env` later
+and `sudo systemctl restart appointment-app`.
 
 **Split (Vercel + EC2).** Deploy `frontend/` to Vercel with
 `VITE_API_BASE_URL=https://api.example.com`, and set

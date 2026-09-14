@@ -46,14 +46,17 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:owner@example.com"
 
-    google_service_account_file: str
-    google_calendar_id: str
+    # Google Calendar. Both empty -> sync is off (appointments still save,
+    # the UI shows a warning), so the app can go live before these exist.
+    google_service_account_file: str = ""
+    google_calendar_id: str = ""
 
-    whatsapp_access_token: str
-    whatsapp_phone_number_id: str
-    whatsapp_template_name: str
+    # WhatsApp Cloud API. Empty token / phone id -> reminders are off.
+    whatsapp_access_token: str = ""
+    whatsapp_phone_number_id: str = ""
+    whatsapp_template_name: str = "appointment_reminder"
     # Shared secret echoed back to Meta when it verifies the webhook URL.
-    whatsapp_verify_token: str
+    whatsapp_verify_token: str = ""
     # The approved template is Hebrew; country code is used to turn a local
     # number like 0501234567 into the E.164 form WhatsApp expects.
     whatsapp_template_language: str = "he"
@@ -67,10 +70,20 @@ class Settings(BaseSettings):
     @field_validator("google_service_account_file")
     @classmethod
     def _resolve_service_account_path(cls, value: str) -> str:
+        if not value:
+            return ""
         path = Path(value)
         if not path.is_absolute():
             path = (BASE_DIR / path).resolve()
         return str(path)
+
+    @property
+    def calendar_enabled(self) -> bool:
+        return bool(self.google_calendar_id and self.google_service_account_file and Path(self.google_service_account_file).is_file())
+
+    @property
+    def whatsapp_enabled(self) -> bool:
+        return bool(self.whatsapp_access_token and self.whatsapp_phone_number_id and self.whatsapp_template_name)
 
     @property
     def frontend_origin_list(self) -> list[str]:

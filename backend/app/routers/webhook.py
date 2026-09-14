@@ -29,7 +29,7 @@ def verify_webhook(
     hub_challenge: str = Query(default="", alias="hub.challenge"),
 ):
     """Meta calls this once when you save the callback URL."""
-    if hub_mode == "subscribe" and hub_verify_token == settings.whatsapp_verify_token:
+    if hub_mode == "subscribe" and settings.whatsapp_verify_token and hub_verify_token == settings.whatsapp_verify_token:
         logger.info("Webhook verified by Meta")
         return PlainTextResponse(hub_challenge)
 

@@ -37,6 +37,9 @@ def _get_service():
 
 def create_event(customer_full_name: str, start: datetime) -> Optional[str]:
     """Creates a calendar event. Returns the google_event_id, or None on failure."""
+    if not settings.calendar_enabled:
+        logger.warning("Google Calendar not configured — event for %s not created", customer_full_name)
+        return None
     try:
         service = _get_service()
         created = (
@@ -52,6 +55,9 @@ def create_event(customer_full_name: str, start: datetime) -> Optional[str]:
 
 def update_event(google_event_id: str, customer_full_name: str, start: datetime) -> bool:
     """Updates an existing calendar event's title/time. Returns whether it succeeded."""
+    if not settings.calendar_enabled:
+        logger.warning("Google Calendar not configured — event %s not updated", google_event_id)
+        return False
     try:
         service = _get_service()
         service.events().update(
@@ -67,6 +73,9 @@ def update_event(google_event_id: str, customer_full_name: str, start: datetime)
 
 def delete_event(google_event_id: str) -> bool:
     """Deletes a calendar event. Returns whether it succeeded (a 404 counts as success)."""
+    if not settings.calendar_enabled:
+        logger.warning("Google Calendar not configured — event %s not deleted", google_event_id)
+        return False
     try:
         service = _get_service()
         service.events().delete(calendarId=settings.google_calendar_id, eventId=google_event_id).execute()

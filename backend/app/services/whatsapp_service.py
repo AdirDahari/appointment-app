@@ -76,6 +76,9 @@ def send_appointment_reminder(
 
     Raises WhatsAppError if the API rejects the request.
     """
+    if not settings.whatsapp_enabled:
+        raise WhatsAppError("WhatsApp אינו מוגדר בשרת (חסרים WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)")
+
     to = normalize_phone_number(phone_number)
     parameters = {
         "customer_name": customer_name,

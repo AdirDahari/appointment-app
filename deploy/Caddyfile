@@ -1,0 +1,15 @@
+# Caddy reverse proxy: terminates HTTPS (automatic Let's Encrypt certificate)
+# and forwards everything to uvicorn on localhost:8000.
+#
+# Replace the domain below with the real one (DNS A record -> this server's
+# Elastic IP). Caddy needs ports 80 and 443 open in the EC2 security group.
+
+tor.example.com {
+    encode gzip
+    reverse_proxy 127.0.0.1:8000
+
+    # The service worker must never be cached by intermediaries, otherwise an
+    # old worker can keep serving an old app shell after a deploy.
+    @sw path /serviceWorker.js
+    header @sw Cache-Control "no-cache"
+}

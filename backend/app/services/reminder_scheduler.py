@@ -111,6 +111,10 @@ def send_if_due(appointment: Appointment, db: Session) -> bool:
 
 def run_once() -> int:
     """One scheduler pass: send every reminder that has come due. Returns the count sent."""
+    if not settings.whatsapp_enabled:
+        logger.warning("Scheduler: WhatsApp not configured — reminders are not being sent")
+        return 0
+
     db = SessionLocal()
     try:
         now = datetime.now()

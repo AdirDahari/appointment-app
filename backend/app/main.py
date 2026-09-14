@@ -51,6 +51,12 @@ async def lifespan(_app: FastAPI):
         settings.scheduler_interval_minutes,
         settings.reminder_hours_before,
     )
+    if not settings.calendar_enabled:
+        logger.warning("Google Calendar sync disabled — set GOOGLE_CALENDAR_ID and a valid GOOGLE_SERVICE_ACCOUNT_FILE")
+    if not settings.whatsapp_enabled:
+        logger.warning("WhatsApp reminders disabled — set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID")
+    if not settings.whatsapp_verify_token:
+        logger.warning("WHATSAPP_VERIFY_TOKEN is empty — Meta's webhook verification will fail until it is set")
     if not settings.push_enabled:
         logger.warning("Web Push disabled — VAPID keys missing (run `python -m app.scripts.generate_vapid`)")
     try:

@@ -1,0 +1,16 @@
+[Unit]
+Description=Appointment App (FastAPI + reminder scheduler)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/appointment-app/backend
+# .env is read from the working directory (backend/.env)
+ExecStart=/opt/appointment-app/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
