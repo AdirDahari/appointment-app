@@ -1,4 +1,6 @@
 :root {
+  /* Height of the fixed bottom nav (excluding the home-indicator safe area) */
+  --nav-h: 76px;
   /* Surfaces */
   --bg-top: #f9f0ed;
   --bg-bottom: #f2e2dd;
@@ -44,6 +46,10 @@
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  background: var(--bg-bottom);
 }
 
 body {
@@ -98,7 +104,9 @@ select {
 
 .page {
   flex: 1;
-  padding: 22px 18px 26px;
+  /* top: clear the iPhone status bar / Dynamic Island (0 outside standalone PWAs);
+     bottom: leave room for the fixed bottom nav + home indicator */
+  padding: calc(22px + env(safe-area-inset-top)) 18px calc(26px + var(--nav-h) + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -579,8 +587,13 @@ select {
 /* ---------- Bottom nav ---------- */
 
 .bottom-nav {
-  position: sticky;
+  position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  max-width: 540px;
+  min-height: var(--nav-h);
   z-index: 20;
   display: flex;
   gap: 4px;
@@ -955,7 +968,7 @@ select {
 
 .policy-page {
   flex: 1;
-  padding: 24px 18px 40px;
+  padding: calc(24px + env(safe-area-inset-top)) 18px calc(40px + env(safe-area-inset-bottom));
 }
 
 .policy-card {
@@ -1017,7 +1030,7 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 20px;
+  padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
 }
 
 .login-card {
