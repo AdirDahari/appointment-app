@@ -23,6 +23,8 @@ class Appointment(Base):
     status = Column(Enum(AppointmentStatus), nullable=False, default=AppointmentStatus.pending)
     reminder_sent_at = Column(DateTime, nullable=True)
     google_event_id = Column(String, nullable=True)
+    # When the owner got the "starts soon" push; NULL until it is sent.
+    owner_notified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     customer = relationship("Customer", back_populates="appointments")

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.customer import Customer
+from app.models.owner_preferences import get_preferences
 from app.models.push_subscription import PushSubscription
 
 logger = logging.getLogger(__name__)
@@ -68,10 +69,21 @@ def _format_when(moment: datetime) -> str:
     return moment.strftime("%d/%m/%Y בשעה %H:%M")
 
 
+def notify_upcoming_appointment(db: Session, appointment: Appointment) -> int:
+    """Heads-up to the owner shortly before an appointment starts."""
+    if not get_preferences(db).notify_upcoming:
+        return 0
+    title = f"תזכורת: תור ל{appointment.customer.full_name} בשעה: {appointment.appointment_datetime.strftime('%H:%M')}"
+    body = appointment.appointment_type or f"בעוד {settings.owner_reminder_minutes_before} דקות"
+    return send_to_all(db, title=title, body=body, url="/")
+
+
 def notify_status_change(
     db: Session, customer: Customer, appointment: Appointment, new_status: AppointmentStatus
 ) -> int:
     """Tell the owner that a customer tapped מגיעה / לא מגיעה."""
+    if not get_preferences(db).notify_status_change:
+        return 0
     when = _format_when(appointment.appointment_datetime)
     if new_status == AppointmentStatus.confirmed:
         title = f"{customer.full_name} אישרה את התור"

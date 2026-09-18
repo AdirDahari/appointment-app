@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.models.owner_preferences import get_preferences
 from app.models.push_subscription import PushSubscription
 from app.services import push_service
 from app.services.auth_service import require_owner
@@ -31,9 +32,36 @@ class UnsubscribeIn(BaseModel):
     endpoint: str
 
 
+class PreferencesOut(BaseModel):
+    notify_upcoming: bool
+    notify_status_change: bool
+
+
+class PreferencesIn(BaseModel):
+    notify_upcoming: bool | None = None
+    notify_status_change: bool | None = None
+
+
 @router.get("/config")
 def push_config():
     return {"enabled": settings.push_enabled, "public_key": settings.vapid_public_key or None}
+
+
+@router.get("/preferences", response_model=PreferencesOut)
+def read_preferences(db: Session = Depends(get_db)):
+    prefs = get_preferences(db)
+    return PreferencesOut(notify_upcoming=prefs.notify_upcoming, notify_status_change=prefs.notify_status_change)
+
+
+@router.patch("/preferences", response_model=PreferencesOut)
+def update_preferences(payload: PreferencesIn, db: Session = Depends(get_db)):
+    prefs = get_preferences(db)
+    if payload.notify_upcoming is not None:
+        prefs.notify_upcoming = payload.notify_upcoming
+    if payload.notify_status_change is not None:
+        prefs.notify_status_change = payload.notify_status_change
+    db.commit()
+    return PreferencesOut(notify_upcoming=prefs.notify_upcoming, notify_status_change=prefs.notify_status_change)
 
 
 @router.post("/subscribe", status_code=201)

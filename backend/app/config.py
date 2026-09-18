@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     reminder_hours_before: int = 24
     scheduler_interval_minutes: int = 10
 
+    # Web Push to the owner's phone shortly before each appointment. Checked
+    # every minute so it lands close to the mark.
+    owner_reminder_minutes_before: int = 30
+
     @field_validator("google_service_account_file")
     @classmethod
     def _resolve_service_account_path(cls, value: str) -> str:

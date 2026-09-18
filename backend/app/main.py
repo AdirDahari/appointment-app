@@ -11,9 +11,9 @@ from sqlalchemy import inspect, text
 
 from app.config import BASE_DIR, settings
 from app.database import Base, engine
-from app.models import push_subscription  # noqa: F401 — registers the table with Base
+from app.models import owner_preferences, push_subscription  # noqa: F401 — registers the tables with Base
 from app.routers import appointments, auth, customers, push, webhook
-from app.services import reminder_scheduler
+from app.services import owner_reminder, reminder_scheduler
 from app.services.auth_service import require_owner
 
 # uvicorn only configures its own loggers; without this the app's own INFO logs
@@ -30,6 +30,9 @@ if "appointments" in inspector.get_table_names():
     if "google_event_id" not in existing_columns:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE appointments ADD COLUMN google_event_id VARCHAR"))
+    if "owner_notified_at" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE appointments ADD COLUMN owner_notified_at DATETIME"))
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +45,14 @@ async def lifespan(_app: FastAPI):
         trigger="interval",
         minutes=settings.scheduler_interval_minutes,
         id="reminder-scheduler",
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        owner_reminder.run_once,
+        trigger="interval",
+        minutes=1,
+        id="owner-reminder",
         max_instances=1,
         coalesce=True,
     )
@@ -59,6 +70,8 @@ async def lifespan(_app: FastAPI):
         logger.warning("WHATSAPP_VERIFY_TOKEN is empty — Meta's webhook verification will fail until it is set")
     if not settings.push_enabled:
         logger.warning("Web Push disabled — VAPID keys missing (run `python -m app.scripts.generate_vapid`)")
+    else:
+        logger.info("Owner push reminders on: %s minutes before each appointment", settings.owner_reminder_minutes_before)
     try:
         yield
     finally:
