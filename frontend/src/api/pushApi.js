@@ -15,3 +15,11 @@ export function unsubscribePush(endpoint) {
 export function sendTestPush() {
   return request('/push/test', { method: 'POST' })
 }
+
+export function getPushPreferences() {
+  return request('/push/preferences')
+}
+
+export function updatePushPreferences(changes) {
+  return request('/push/preferences', { method: 'PATCH', body: changes })
+}

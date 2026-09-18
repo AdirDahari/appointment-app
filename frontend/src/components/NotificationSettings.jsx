@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { getPushConfig, sendTestPush, subscribePush, unsubscribePush } from '../api/pushApi'
+import {
+  getPushConfig,
+  getPushPreferences,
+  sendTestPush,
+  subscribePush,
+  unsubscribePush,
+  updatePushPreferences,
+} from '../api/pushApi'
 import { BellIcon } from './Icons'
 
 function urlBase64ToUint8Array(base64String) {
@@ -13,6 +20,21 @@ const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent)
 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true
 const browserSupports = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 
+// The two kinds of push the server can send. The switches are stored on the
+// server, so they apply to every device the owner registered.
+const PREFERENCE_ROWS = [
+  {
+    key: 'notify_upcoming',
+    label: 'תזכורת לפני תור',
+    sub: 'חצי שעה לפני כל תור: "תזכורת: תור ל... בשעה ..."',
+  },
+  {
+    key: 'notify_status_change',
+    label: 'תגובת לקוחה',
+    sub: 'כשלקוחה מאשרת או מבטלת תור מהתזכורת בוואטסאפ',
+  },
+]
+
 async function currentSubscription() {
   const registration = await navigator.serviceWorker.getRegistration()
   if (!registration) return { registration: null, subscription: null }
@@ -21,6 +43,7 @@ async function currentSubscription() {
 
 function NotificationSettings() {
   const [config, setConfig] = useState(null)
+  const [preferences, setPreferences] = useState(null)
   const [subscribed, setSubscribed] = useState(false)
   const [hasWorker, setHasWorker] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -36,6 +59,11 @@ function NotificationSettings() {
       .catch(() => {
         if (!cancelled) setConfig({ enabled: false })
       })
+    getPushPreferences()
+      .then((data) => {
+        if (!cancelled) setPreferences(data)
+      })
+      .catch(() => {})
     if (browserSupports) {
       currentSubscription()
         .then(({ registration, subscription }) => {
@@ -106,6 +134,19 @@ function NotificationSettings() {
     }
   }
 
+  async function togglePreference(key, value) {
+    const previous = preferences
+    setPreferences({ ...preferences, [key]: value })
+    setError('')
+    try {
+      const saved = await updatePushPreferences({ [key]: value })
+      setPreferences(saved)
+    } catch (err) {
+      setPreferences(previous)
+      setError(err.message)
+    }
+  }
+
   let status
   if (!browserSupports || (isIos && !isStandalone)) {
     status = 'כדי לקבל התראות באייפון יש להוסיף את האפליקציה למסך הבית (שיתוף ← הוסף למסך הבית) ולפתוח אותה משם'
@@ -116,6 +157,7 @@ function NotificationSettings() {
   }
 
   const canToggle = browserSupports && config?.enabled && hasWorker && !(isIos && !isStandalone)
+  const switchesActive = Boolean(preferences) && config?.enabled
 
   return (
     <section className="settings-block">
@@ -125,7 +167,7 @@ function NotificationSettings() {
         </span>
         <div>
           <div className="settings-title">התראות</div>
-          <div className="settings-sub">הודעה לטלפון כשלקוחה מאשרת או מבטלת תור</div>
+          <div className="settings-sub">הודעות לטלפון של בעלת העסק</div>
         </div>
       </div>
 
@@ -133,12 +175,34 @@ function NotificationSettings() {
       {message && <div className="alert alert-note">{message}</div>}
       {error && <div className="alert alert-error">{error}</div>}
 
+      {preferences && (
+        <div className="toggle-list">
+          {PREFERENCE_ROWS.map(({ key, label, sub }) => (
+            <label key={key} className={`toggle-row${switchesActive ? '' : ' is-disabled'}`}>
+              <span className="toggle-text">
+                <span className="toggle-label">{label}</span>
+                <span className="toggle-sub">{sub}</span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                aria-checked={preferences[key]}
+                checked={preferences[key]}
+                disabled={!switchesActive}
+                onChange={(event) => togglePreference(key, event.target.checked)}
+              />
+              <span className="switch" aria-hidden="true" />
+            </label>
+          ))}
+        </div>
+      )}
+
       {canToggle && (
         <div className="form-actions">
           {subscribed ? (
             <>
               <button type="button" className="btn btn-ghost" onClick={disable} disabled={busy}>
-                כיבוי התראות
+                כיבוי במכשיר הזה
               </button>
               <button type="button" className="btn btn-primary" onClick={sendTest} disabled={busy}>
                 שליחת בדיקה
