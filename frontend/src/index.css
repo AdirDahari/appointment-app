@@ -667,6 +667,8 @@ select {
   gap: 16px;
   max-height: 92svh;
   overflow-y: auto;
+  /* The sheet only ever scrolls up and down, never sideways. */
+  overflow-x: hidden;
   box-shadow: 0 -10px 40px rgba(27, 22, 20, 0.18);
 }
 
@@ -729,21 +731,34 @@ select {
   color: var(--ink-3);
 }
 
-.field input[type='date'] {
+/* iOS gives date/time inputs a built-in minimum width that ignores the
+   container; dropping the native appearance lets them shrink to fit. The
+   native picker still opens on tap. */
+.field input[type='date'],
+.field input[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.field input[type='date']::-webkit-date-and-time-value,
+.field input[type='time']::-webkit-date-and-time-value {
+  text-align: center;
 }
 
 .time-range {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 
-.time-range input[type='time'] {
-  width: 100%;
+.time-range .field {
   min-width: 0;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Day view inside the appointment form ---------- */

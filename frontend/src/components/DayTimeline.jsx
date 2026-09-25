@@ -35,6 +35,10 @@ function heightOf(minutes) {
 function DayTimeline({ appointments, selectedTime, selectedEndTime, selectedMinutes, onSelect, previewLabel }) {
   const scrollRef = useRef(null)
   const gridRef = useRef(null)
+  // A time picked by tapping the grid is already on screen, so it must not
+  // trigger the follow-scroll below. Holds the last tapped time until then.
+  const tappedTimeRef = useRef(null)
+  const previousTimeRef = useRef(selectedTime)
 
   const startHour = DAY_START_HOUR
   const endHour = DAY_END_HOUR
@@ -46,14 +50,34 @@ function DayTimeline({ appointments, selectedTime, selectedEndTime, selectedMinu
     return ((toMinutes(time) - startHour * 60) / 60) * HOUR_HEIGHT
   }
 
-  // Scroll so the selected time (or the first appointment, or opening time) is near the top.
+  function scrollToTime(time, behavior) {
+    const top = Math.max(0, topOf(time) - HOUR_HEIGHT / 2)
+    // Next frame: the sheet may still be laying out when this runs.
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ top, behavior })
+    })
+  }
+
+  // On open / day change: jump to the selected time, the first appointment,
+  // or opening time.
   useEffect(() => {
-    const anchor = selectedTime || appointments[0]?.time || '08:00'
-    const target = Math.max(0, topOf(anchor) - HOUR_HEIGHT / 2)
-    if (scrollRef.current) scrollRef.current.scrollTop = target
+    scrollToTime(selectedTime || appointments[0]?.time || '08:00', 'auto')
     // Only on mount / day change: re-scrolling on every tap would fight the user.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointments])
+
+  // Start time changed in the time field: bring it into view.
+  useEffect(() => {
+    if (selectedTime === previousTimeRef.current) return
+    previousTimeRef.current = selectedTime
+    if (!selectedTime) return
+    if (selectedTime === tappedTimeRef.current) {
+      tappedTimeRef.current = null
+      return
+    }
+    scrollToTime(selectedTime, 'smooth')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTime])
 
   function handleClick(event) {
     const rect = gridRef.current.getBoundingClientRect()
@@ -61,7 +85,9 @@ function DayTimeline({ appointments, selectedTime, selectedEndTime, selectedMinu
     const rawMinutes = startHour * 60 + (y / HOUR_HEIGHT) * 60
     const maxStart = endHour * 60 - STEP_MINUTES
     const snapped = Math.min(maxStart, Math.max(startHour * 60, Math.round(rawMinutes / STEP_MINUTES) * STEP_MINUTES))
-    onSelect(toTime(snapped))
+    const time = toTime(snapped)
+    tappedTimeRef.current = time === selectedTime ? null : time
+    onSelect(time)
   }
 
   return (
