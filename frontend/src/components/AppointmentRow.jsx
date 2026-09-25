@@ -16,6 +16,7 @@ function AppointmentRow({ appointment, onEdit, onDelete, showDate = false }) {
     <li className="row-card">
       <div className="appt-time">
         {formatTime(appointment.appointment_datetime)}
+        <div className="appt-time-end">עד {formatTime(appointment.appointment_end_datetime)}</div>
         {showDate && <div className="row-meta">{formatShortDate(appointment.appointment_datetime)}</div>}
       </div>
 

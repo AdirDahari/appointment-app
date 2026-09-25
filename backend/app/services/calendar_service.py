@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from google.oauth2 import service_account
@@ -12,15 +12,13 @@ logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 TIME_ZONE = "Asia/Jerusalem"
-EVENT_DURATION = timedelta(hours=1)
 
 
 def _event_title(customer_full_name: str) -> str:
     return f"גלי לק ג'יל - {customer_full_name}"
 
 
-def _event_body(customer_full_name: str, start: datetime) -> dict:
-    end = start + EVENT_DURATION
+def _event_body(customer_full_name: str, start: datetime, end: datetime) -> dict:
     return {
         "summary": _event_title(customer_full_name),
         "start": {"dateTime": start.isoformat(), "timeZone": TIME_ZONE},
@@ -35,7 +33,7 @@ def _get_service():
     return build("calendar", "v3", credentials=credentials, cache_discovery=False)
 
 
-def create_event(customer_full_name: str, start: datetime) -> Optional[str]:
+def create_event(customer_full_name: str, start: datetime, end: datetime) -> Optional[str]:
     """Creates a calendar event. Returns the google_event_id, or None on failure."""
     if not settings.calendar_enabled:
         logger.warning("Google Calendar not configured — event for %s not created", customer_full_name)
@@ -44,7 +42,7 @@ def create_event(customer_full_name: str, start: datetime) -> Optional[str]:
         service = _get_service()
         created = (
             service.events()
-            .insert(calendarId=settings.google_calendar_id, body=_event_body(customer_full_name, start))
+            .insert(calendarId=settings.google_calendar_id, body=_event_body(customer_full_name, start, end))
             .execute()
         )
         return created.get("id")
@@ -53,7 +51,7 @@ def create_event(customer_full_name: str, start: datetime) -> Optional[str]:
         return None
 
 
-def update_event(google_event_id: str, customer_full_name: str, start: datetime) -> bool:
+def update_event(google_event_id: str, customer_full_name: str, start: datetime, end: datetime) -> bool:
     """Updates an existing calendar event's title/time. Returns whether it succeeded."""
     if not settings.calendar_enabled:
         logger.warning("Google Calendar not configured — event %s not updated", google_event_id)
@@ -63,7 +61,7 @@ def update_event(google_event_id: str, customer_full_name: str, start: datetime)
         service.events().update(
             calendarId=settings.google_calendar_id,
             eventId=google_event_id,
-            body=_event_body(customer_full_name, start),
+            body=_event_body(customer_full_name, start, end),
         ).execute()
         return True
     except Exception:

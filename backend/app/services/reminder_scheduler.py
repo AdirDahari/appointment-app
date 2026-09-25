@@ -10,9 +10,12 @@ from app.services import whatsapp_service
 
 logger = logging.getLogger(__name__)
 
-# Safety net for the walk-back loop; with a single closed day per week it never
-# needs more than two steps, but this keeps a bad BUSINESS_HOURS table from looping.
+# Safety net for the day-walking loops; with a single closed day per week they
+# never need more than two steps, but this keeps a bad BUSINESS_HOURS table from looping.
 MAX_ROLLBACK_DAYS = 14
+
+# Business hours only govern when WhatsApp reminders go out. Appointments
+# themselves can be booked at any hour.
 
 
 def is_within_business_hours(moment: datetime) -> bool:
@@ -23,27 +26,48 @@ def is_within_business_hours(moment: datetime) -> bool:
     return opens_at <= moment.time() <= closes_at
 
 
+def _last_send_slot(day: date) -> datetime:
+    """The latest reminder time on `day` that a scheduler run is sure to catch
+    before closing. Runs are `scheduler_interval_minutes` apart, so a reminder
+    stamped exactly at closing could otherwise be first seen after closing."""
+    closes_at = BUSINESS_HOURS[day.weekday()][1]
+    return datetime.combine(day, closes_at) - timedelta(minutes=settings.scheduler_interval_minutes)
+
+
 def _previous_business_day_closing(day: date) -> datetime:
-    """Closing time of the most recent business day strictly before `day`."""
+    """Last send slot of the most recent business day strictly before `day`."""
     cursor = day - timedelta(days=1)
     for _ in range(MAX_ROLLBACK_DAYS):
-        window = BUSINESS_HOURS.get(cursor.weekday())
-        if window:
-            return datetime.combine(cursor, window[1])
+        if cursor.weekday() in BUSINESS_HOURS:
+            return _last_send_slot(cursor)
         cursor -= timedelta(days=1)
     raise ValueError(f"No business day found within {MAX_ROLLBACK_DAYS} days before {day}")
 
 
-def adjust_to_business_hours(target: datetime) -> datetime:
-    """Move a reminder time into business hours, always backwards, never forwards.
+def next_opening(moment: datetime) -> datetime:
+    """The first opening time strictly after `moment`."""
+    cursor = moment.date()
+    for _ in range(MAX_ROLLBACK_DAYS):
+        window = BUSINESS_HOURS.get(cursor.weekday())
+        if window:
+            opening = datetime.combine(cursor, window[0])
+            if opening > moment:
+                return opening
+        cursor += timedelta(days=1)
+    raise ValueError(f"No business day found within {MAX_ROLLBACK_DAYS} days after {moment}")
+
+
+def adjust_to_business_hours(target: datetime, appointment_datetime: datetime) -> datetime:
+    """Move a reminder time into business hours.
 
     - inside the day's window            -> unchanged
-    - after that day's closing           -> that same day's closing time
-    - before that day's opening          -> previous business day's closing time
-    - on a fully closed day (Saturday)   -> previous business day's closing time
+    - before that day's opening          -> that day's opening time
+      (e.g. a 07:00 appointment is reminded at 08:00 the day before)
+    - after that day's closing           -> shortly before that day's closing
+    - on a fully closed day (Saturday)   -> shortly before the previous business day's closing
 
-    The result is always a *closing* time (or the original moment), never an
-    opening time — a reminder is never pushed later than originally computed.
+    If moving forward to the opening would land at or after the appointment
+    itself, the reminder goes back to the previous business day instead.
     """
     window = BUSINESS_HOURS.get(target.weekday())
 
@@ -52,8 +76,11 @@ def adjust_to_business_hours(target: datetime) -> datetime:
         if opens_at <= target.time() <= closes_at:
             return target
         if target.time() > closes_at:
-            return datetime.combine(target.date(), closes_at)
-        # before opening — fall through to the previous business day
+            return max(_last_send_slot(target.date()), datetime.combine(target.date(), opens_at))
+        opening = datetime.combine(target.date(), opens_at)
+        if opening < appointment_datetime:
+            return opening
+        # opening is too late for this appointment — fall through
 
     return _previous_business_day_closing(target.date())
 
@@ -61,7 +88,7 @@ def adjust_to_business_hours(target: datetime) -> datetime:
 def compute_reminder_time(appointment_datetime: datetime) -> datetime:
     """When the reminder for this appointment should actually be sent."""
     target = appointment_datetime - timedelta(hours=settings.reminder_hours_before)
-    return adjust_to_business_hours(target)
+    return adjust_to_business_hours(target, appointment_datetime)
 
 
 def is_due(appointment: Appointment, now: datetime) -> bool:
@@ -74,7 +101,12 @@ def is_due(appointment: Appointment, now: datetime) -> bool:
     # after a quiet period would blast reminders for every past appointment.
     if appointment.appointment_datetime <= now:
         return False
-    return compute_reminder_time(appointment.appointment_datetime) <= now
+    if compute_reminder_time(appointment.appointment_datetime) > now:
+        return False
+    # Due, but only sent inside business hours. The one exception: the
+    # appointment starts before the business opens again (e.g. booked at 21:00
+    # for 07:00 tomorrow), where waiting would mean no reminder at all.
+    return is_within_business_hours(now) or next_opening(now) >= appointment.appointment_datetime
 
 
 def send_reminder(appointment: Appointment, db: Session) -> bool:

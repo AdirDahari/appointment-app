@@ -36,9 +36,12 @@ permission levels.
 
 ## Reminder timing
 
+Appointments can be booked at any hour. Business hours only decide when the
+WhatsApp reminder is sent.
+
 A reminder is scheduled for `appointment_datetime - REMINDER_HOURS_BEFORE`
-(default 24h). If that moment falls outside business hours it is rolled
-**backwards** — never forwards, and never to an opening time:
+(default 24h). If that moment falls outside business hours it is moved into
+them:
 
 | Business hours | |
 |---|---|
@@ -47,16 +50,25 @@ A reminder is scheduled for `appointment_datetime - REMINDER_HOURS_BEFORE`
 | Saturday | closed |
 
 - inside the window → unchanged
-- after closing → that day's closing time
-- before opening → the previous business day's closing time
-- on Saturday → Friday 14:00
+- before opening → that day's opening time, so a **07:00** appointment is
+  reminded at **08:00** the day before
+- after closing → shortly before that day's closing
+- on Saturday → shortly before Friday's closing
 
-So a **Sunday 18:00** appointment computes to Saturday 18:00, which is closed,
-and rolls back to **Friday 14:00** — going out ~52 hours ahead rather than 24.
+"Shortly before closing" is closing minus `SCHEDULER_INTERVAL_MINUTES`, so a
+scheduler run is sure to catch it while the business is still open. If moving
+forward to the opening would land at or after the appointment itself, the
+reminder goes to the previous business day's closing instead.
+
+A **Sunday 18:00** appointment computes to Saturday 18:00, which is closed,
+and goes out on **Friday** before 14:00, about 52 hours ahead rather than 24.
 That is intended behaviour, not a bug.
 
-An appointment booked (or rescheduled) already inside the window is reminded
-immediately instead of waiting for the next scheduler cycle. Cancelled
+Reminders are only sent inside business hours. An appointment booked (or
+rescheduled) after its reminder time is reminded right away if the business is
+open, otherwise at the next opening. The exception is an appointment that
+starts before the next opening, e.g. booked at 21:00 for 07:00 tomorrow: it is
+reminded immediately, since waiting would mean no reminder at all. Cancelled
 appointments and appointments in the past are never reminded.
 
 ## Getting started
@@ -198,7 +210,7 @@ Tables are created on first start. SQLite remains the default for development.
 | `GET/POST` | `/customers` | `?search=` filters by name |
 | `GET/PATCH/DELETE` | `/customers/{id}` | detail includes computed `last_appointment_date` (past appointments only) |
 | `GET/POST` | `/appointments` | `?reminder_sent=true` filters to reminded ones |
-| `PATCH/DELETE` | `/appointments/{id}` | changing the date resets `reminder_sent_at` and `status` |
+| `PATCH/DELETE` | `/appointments/{id}` | changing the start resets `reminder_sent_at` and `status`; `appointment_end_datetime` defaults to one hour after the start |
 | `POST` | `/appointments/{id}/send-reminder` | manual send, for testing |
 | `GET/POST` | `/webhook` | Meta verification + incoming replies; a status change also pushes a notification to the owner |
 | `POST` | `/auth/login` | returns the bearer token |

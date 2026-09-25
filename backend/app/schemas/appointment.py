@@ -1,9 +1,11 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.models.appointment import AppointmentStatus
+
+END_BEFORE_START_ERROR = "שעת הסיום חייבת להיות אחרי שעת ההתחלה"
 
 
 def _clean_type(value: Optional[str]) -> Optional[str]:
@@ -26,12 +28,20 @@ class AppointmentBase(BaseModel):
 
 
 class AppointmentCreate(AppointmentBase):
-    pass
+    # Omitted -> a one-hour appointment.
+    appointment_end_datetime: Optional[datetime] = None
+
+    @model_validator(mode="after")
+    def _end_after_start(self):
+        if self.appointment_end_datetime is not None and self.appointment_end_datetime <= self.appointment_datetime:
+            raise ValueError(END_BEFORE_START_ERROR)
+        return self
 
 
 class AppointmentUpdate(BaseModel):
     appointment_type: Optional[str] = None
     appointment_datetime: Optional[datetime] = None
+    appointment_end_datetime: Optional[datetime] = None
     status: Optional[AppointmentStatus] = None
 
     @field_validator("appointment_type")
@@ -44,6 +54,7 @@ class AppointmentOut(AppointmentBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    appointment_end_datetime: datetime
     status: AppointmentStatus
     reminder_sent_at: Optional[datetime] = None
     created_at: datetime

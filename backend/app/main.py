@@ -33,6 +33,11 @@ if "appointments" in inspector.get_table_names():
     if "owner_notified_at" not in existing_columns:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE appointments ADD COLUMN owner_notified_at DATETIME"))
+    if "appointment_end_datetime" not in existing_columns:
+        # TIMESTAMP, not DATETIME: this also runs against Postgres (Supabase),
+        # which has no DATETIME type. Existing rows stay NULL = one hour long.
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE appointments ADD COLUMN appointment_end_datetime TIMESTAMP"))
 
 logger = logging.getLogger(__name__)
 

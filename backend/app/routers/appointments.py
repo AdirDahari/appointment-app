@@ -6,9 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models.appointment import Appointment, AppointmentStatus
+from app.models.appointment import DEFAULT_DURATION, Appointment, AppointmentStatus, end_datetime_of
 from app.models.customer import Customer
-from app.schemas.appointment import AppointmentCreate, AppointmentOut, AppointmentUpdate
+from app.schemas.appointment import (
+    END_BEFORE_START_ERROR,
+    AppointmentCreate,
+    AppointmentOut,
+    AppointmentUpdate,
+)
 from app.services import calendar_service, reminder_scheduler, whatsapp_service
 
 logger = logging.getLogger(__name__)
@@ -22,6 +27,7 @@ def _to_out(appointment: Appointment, calendar_warning: Optional[str] = None) ->
         customer_id=appointment.customer_id,
         appointment_type=appointment.appointment_type,
         appointment_datetime=appointment.appointment_datetime,
+        appointment_end_datetime=end_datetime_of(appointment),
         status=appointment.status,
         reminder_sent_at=appointment.reminder_sent_at,
         created_at=appointment.created_at,
@@ -41,13 +47,16 @@ def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)
         customer_id=payload.customer_id,
         appointment_type=payload.appointment_type,
         appointment_datetime=payload.appointment_datetime,
+        appointment_end_datetime=payload.appointment_end_datetime or payload.appointment_datetime + DEFAULT_DURATION,
     )
     db.add(appointment)
     db.commit()
     db.refresh(appointment)
 
     calendar_warning = None
-    google_event_id = calendar_service.create_event(customer.full_name, appointment.appointment_datetime)
+    google_event_id = calendar_service.create_event(
+        customer.full_name, appointment.appointment_datetime, appointment.appointment_end_datetime
+    )
     if google_event_id:
         appointment.google_event_id = google_event_id
         db.commit()
@@ -87,10 +96,23 @@ def update_appointment(
 
     data = payload.model_dump(exclude_unset=True)
 
-    reschedule = (
-        "appointment_datetime" in data
-        and data["appointment_datetime"] != appointment.appointment_datetime
-    )
+    old_start = appointment.appointment_datetime
+    old_end = end_datetime_of(appointment)
+    new_start = data.get("appointment_datetime", old_start)
+    if "appointment_end_datetime" in data and data["appointment_end_datetime"] is not None:
+        new_end = data["appointment_end_datetime"]
+    else:
+        # Moving only the start keeps the appointment's length.
+        new_end = new_start + (old_end - old_start)
+    if new_end <= new_start:
+        raise HTTPException(status_code=422, detail=END_BEFORE_START_ERROR)
+    data["appointment_datetime"] = new_start
+    data["appointment_end_datetime"] = new_end
+
+    # Only a new start time affects the customer's reminder; a new end time
+    # just needs the calendar event updated.
+    reschedule = new_start != old_start
+    times_changed = reschedule or new_end != old_end
 
     for field, value in data.items():
         setattr(appointment, field, value)
@@ -103,9 +125,12 @@ def update_appointment(
     db.refresh(appointment)
 
     calendar_warning = None
-    if reschedule and appointment.google_event_id:
+    if times_changed and appointment.google_event_id:
         success = calendar_service.update_event(
-            appointment.google_event_id, appointment.customer.full_name, appointment.appointment_datetime
+            appointment.google_event_id,
+            appointment.customer.full_name,
+            appointment.appointment_datetime,
+            appointment.appointment_end_datetime,
         )
         if not success:
             calendar_warning = "התור עודכן במערכת, אך עדכון האירוע ביומן Google נכשל"

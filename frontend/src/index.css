@@ -287,6 +287,13 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
+.appt-time-end {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
 .row-main {
   flex: 1;
   min-width: 0;
@@ -722,28 +729,19 @@ select {
   color: var(--ink-3);
 }
 
-.datetime-fields {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.field input[type='date'] {
+  width: 100%;
 }
 
-.datetime-fields input[type='date'] {
-  flex: 1.5;
-  min-height: 50px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-field);
-  background: var(--surface-2);
-  padding: 12px 14px;
+.time-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
-.datetime-fields input[type='time'] {
-  flex: 1;
-  min-height: 50px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-field);
-  background: var(--surface-2);
-  padding: 12px 14px;
+.time-range input[type='time'] {
+  width: 100%;
+  min-width: 0;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }

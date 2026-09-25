@@ -1,4 +1,5 @@
 import enum
+from datetime import datetime, timedelta
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
@@ -20,6 +21,9 @@ class Appointment(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False, index=True)
     appointment_type = Column(String, nullable=True)
     appointment_datetime = Column(DateTime, nullable=False, index=True)
+    # NULL on appointments booked before end times existed; read those through
+    # end_datetime_of(), which falls back to a one-hour appointment.
+    appointment_end_datetime = Column(DateTime, nullable=True)
     status = Column(Enum(AppointmentStatus), nullable=False, default=AppointmentStatus.pending)
     reminder_sent_at = Column(DateTime, nullable=True)
     google_event_id = Column(String, nullable=True)
@@ -28,3 +32,10 @@ class Appointment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     customer = relationship("Customer", back_populates="appointments")
+
+
+DEFAULT_DURATION = timedelta(hours=1)
+
+
+def end_datetime_of(appointment: "Appointment") -> datetime:
+    return appointment.appointment_end_datetime or appointment.appointment_datetime + DEFAULT_DURATION
