@@ -3,7 +3,7 @@
 // VITE_API_BASE_URL is empty when the frontend is served by the backend (or
 // through Vite's dev proxy) and set to the backend's URL when the frontend is
 // hosted elsewhere (e.g. Vercel -> EC2).
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 const TOKEN_KEY = 'owner_session_token'
 
 export const AUTH_LOGOUT_EVENT = 'auth:logout'

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'appointment-app-v5'
+const CACHE_NAME = 'appointment-app-v6'
 const APP_SHELL = [
   '/',
   '/manifest.json',
@@ -35,7 +35,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
   // Live data always goes to the network — never serve stale customers/appointments
-  if (['/customers', '/appointments', '/auth', '/push', '/webhook', '/health'].some((p) => url.pathname.startsWith(p))) return
+  if (['/customers', '/appointments', '/auth', '/push', '/webhook', '/health', '/c/'].some((p) => url.pathname.startsWith(p))) return
 
   event.respondWith(
     (async () => {

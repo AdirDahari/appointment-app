@@ -11,8 +11,9 @@ from sqlalchemy import inspect, text
 
 from app.config import BASE_DIR, settings
 from app.database import Base, engine
+from app.models.appointment import new_share_token
 from app.models import owner_preferences, push_subscription  # noqa: F401 — registers the tables with Base
-from app.routers import appointments, auth, customers, push, webhook
+from app.routers import appointments, auth, customers, push, share, webhook
 from app.services import owner_reminder, reminder_scheduler
 from app.services.auth_service import require_owner
 
@@ -38,6 +39,20 @@ if "appointments" in inspector.get_table_names():
         # which has no DATETIME type. Existing rows stay NULL = one hour long.
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE appointments ADD COLUMN appointment_end_datetime TIMESTAMP"))
+    if "share_token" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE appointments ADD COLUMN share_token VARCHAR"))
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_appointments_share_token ON appointments (share_token)"))
+
+# Appointments booked before share links existed get their token here, so
+# every appointment can be shared.
+with engine.begin() as conn:
+    missing = conn.execute(text("SELECT id FROM appointments WHERE share_token IS NULL")).scalars().all()
+    for appointment_id in missing:
+        conn.execute(
+            text("UPDATE appointments SET share_token = :token WHERE id = :id"),
+            {"token": new_share_token(), "id": appointment_id},
+        )
 
 logger = logging.getLogger(__name__)
 
@@ -96,13 +111,15 @@ if settings.frontend_origin_list:
         allow_headers=["*"],
     )
 
-# Public: login, Meta's webhook, health. Everything about customers and
+# Public: login, Meta's webhook, health, share pages. Everything about customers and
 # appointments requires the owner's token.
 app.include_router(auth.router)
 app.include_router(webhook.router)
 app.include_router(customers.router, dependencies=[Depends(require_owner)])
 app.include_router(appointments.router, dependencies=[Depends(require_owner)])
 app.include_router(push.router)
+# Public: the customer's "add to calendar" page, reached by its share token.
+app.include_router(share.router)
 
 
 @app.get("/health")
@@ -114,7 +131,7 @@ def health():
 # (`npm run build` -> frontend/dist), serve it from here so the app and the API
 # share one origin — no CORS, and the PWA's service worker scope covers both.
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
-API_PREFIXES = {"auth", "customers", "appointments", "push", "webhook", "health", "docs", "openapi.json", "redoc"}
+API_PREFIXES = {"c", "auth", "customers", "appointments", "push", "webhook", "health", "docs", "openapi.json", "redoc"}
 if (FRONTEND_DIST / "index.html").exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 

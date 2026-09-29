@@ -1,4 +1,5 @@
 import enum
+import secrets
 from datetime import datetime, timedelta
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
@@ -29,12 +30,19 @@ class Appointment(Base):
     google_event_id = Column(String, nullable=True)
     # When the owner got the "starts soon" push; NULL until it is sent.
     owner_notified_at = Column(DateTime, nullable=True)
+    # Unguessable key for the public "add to calendar" page the owner shares
+    # with the customer. Never the id, so one link can't lead to another.
+    share_token = Column(String, nullable=True, unique=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     customer = relationship("Customer", back_populates="appointments")
 
 
 DEFAULT_DURATION = timedelta(hours=1)
+
+
+def new_share_token() -> str:
+    return secrets.token_urlsafe(16)
 
 
 def end_datetime_of(appointment: "Appointment") -> datetime:

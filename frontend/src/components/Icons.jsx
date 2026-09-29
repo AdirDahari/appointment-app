@@ -168,3 +168,12 @@ export function LogoutIcon(props) {
     </Icon>
   )
 }
+
+export function ShareIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M4 20l1.2-3.9A8.5 8.5 0 1 1 8 19z" />
+      <path d="M9 10.5h6M9 13.5h4" />
+    </Icon>
+  )
+}

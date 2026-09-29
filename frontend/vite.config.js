@@ -46,6 +46,9 @@ export default defineConfig({
       '/appointments': BACKEND_URL,
       '/auth': BACKEND_URL,
       '/push': BACKEND_URL,
+      // Public "add to calendar" pages (regex: a bare '/c' prefix would also
+      // catch '/customers' and Vite's own paths).
+      '^/c/': BACKEND_URL,
     },
   },
 })

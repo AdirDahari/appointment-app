@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models.appointment import DEFAULT_DURATION, Appointment, AppointmentStatus, end_datetime_of
+from app.models.appointment import DEFAULT_DURATION, Appointment, AppointmentStatus, end_datetime_of, new_share_token
 from app.models.customer import Customer
 from app.schemas.appointment import (
     END_BEFORE_START_ERROR,
@@ -32,6 +32,8 @@ def _to_out(appointment: Appointment, calendar_warning: Optional[str] = None) ->
         reminder_sent_at=appointment.reminder_sent_at,
         created_at=appointment.created_at,
         customer_name=appointment.customer.full_name,
+        customer_phone=appointment.customer.phone_number,
+        share_token=appointment.share_token,
         google_event_id=appointment.google_event_id,
         calendar_warning=calendar_warning,
     )
@@ -48,6 +50,7 @@ def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)
         appointment_type=payload.appointment_type,
         appointment_datetime=payload.appointment_datetime,
         appointment_end_datetime=payload.appointment_end_datetime or payload.appointment_datetime + DEFAULT_DURATION,
+        share_token=new_share_token(),
     )
     db.add(appointment)
     db.commit()

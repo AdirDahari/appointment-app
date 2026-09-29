@@ -5,6 +5,8 @@ import AppointmentForm from '../components/AppointmentForm'
 import AppointmentRow from '../components/AppointmentRow'
 import SettingsSheet from '../components/SettingsSheet'
 import { CalendarIcon, ChevronLeftIcon, GearIcon, PlusIcon, SparkIcon } from '../components/Icons'
+import ShareNotice from '../components/ShareNotice'
+import { shouldOfferShare } from '../utils/shareAppointment'
 
 const OWNER_NAME = 'גלי'
 
@@ -28,6 +30,7 @@ function HomePage({ onNavigate, username, onLogout }) {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [warning, setWarning] = useState('')
+  const [shareOffer, setShareOffer] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingAppointment, setEditingAppointment] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
@@ -66,8 +69,10 @@ function HomePage({ onNavigate, username, onLogout }) {
   }
 
   async function handleSaved(saved) {
+    const previous = editingAppointment
     closeForm()
     setWarning(saved.calendar_warning || '')
+    setShareOffer(shouldOfferShare(previous, saved) ? { appointment: saved, isNew: !previous } : null)
     await loadData()
   }
 
@@ -139,6 +144,13 @@ function HomePage({ onNavigate, username, onLogout }) {
       </section>
 
       {warning && <div className="alert alert-note">{warning}</div>}
+      {shareOffer && (
+        <ShareNotice
+          appointment={shareOffer.appointment}
+          isNew={shareOffer.isNew}
+          onClose={() => setShareOffer(null)}
+        />
+      )}
       {loadError && <div className="alert alert-error">{loadError}</div>}
 
       <section className="section">

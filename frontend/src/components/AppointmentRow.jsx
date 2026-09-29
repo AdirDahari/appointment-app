@@ -1,5 +1,6 @@
 import StatusBadge from './StatusBadge'
-import { PencilIcon, TrashIcon } from './Icons'
+import { PencilIcon, ShareIcon, TrashIcon } from './Icons'
+import { canShare, whatsAppShareUrl } from '../utils/shareAppointment'
 
 function formatTime(isoString) {
   return new Date(isoString).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
@@ -29,6 +30,17 @@ function AppointmentRow({ appointment, onEdit, onDelete, showDate = false }) {
       </div>
 
       <div className="row-actions">
+        {canShare(appointment) && (
+          <a
+            className="icon-btn"
+            href={whatsAppShareUrl(appointment)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`שליחת פרטי התור ל${appointment.customer_name} בוואטסאפ`}
+          >
+            <ShareIcon size={17} />
+          </a>
+        )}
         <button
           type="button"
           className="icon-btn"

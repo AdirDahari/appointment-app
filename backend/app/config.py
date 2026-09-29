@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:owner@example.com"
 
+    # Shown to customers on the shared "add to calendar" page and in the event
+    # they add. An empty address leaves the event without a location.
+    business_name: str = "גלי לק ג'יל"
+    business_address: str = ""
+
     # Google Calendar. Both empty -> sync is off (appointments still save,
     # the UI shows a warning), so the app can go live before these exist.
     google_service_account_file: str = ""

@@ -59,5 +59,7 @@ class AppointmentOut(AppointmentBase):
     reminder_sent_at: Optional[datetime] = None
     created_at: datetime
     customer_name: str
+    customer_phone: str
+    share_token: Optional[str] = None
     google_event_id: Optional[str] = None
     calendar_warning: Optional[str] = None

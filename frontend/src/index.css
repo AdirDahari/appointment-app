@@ -1339,3 +1339,46 @@ select {
   color: var(--ink-2);
   margin: 0;
 }
+
+/* ---------- Share-with-customer popup ---------- */
+
+.share-sheet {
+  text-align: center;
+  align-items: center;
+}
+
+.share-sheet .form-actions {
+  width: 100%;
+  flex-direction: column;
+}
+
+.share-sheet-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--ok-soft);
+  color: var(--ok);
+  display: grid;
+  place-items: center;
+}
+
+.share-sheet-when {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.share-sheet-text {
+  margin: 0;
+  font-size: 15px;
+}
+
+.btn-whatsapp {
+  background: #25d366;
+  color: #fff;
+  text-decoration: none;
+}
+
+.btn-whatsapp:hover {
+  background: #1ebe5b;
+}

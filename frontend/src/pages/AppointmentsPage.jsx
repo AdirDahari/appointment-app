@@ -4,6 +4,8 @@ import AppointmentForm from '../components/AppointmentForm'
 import AppointmentRow from '../components/AppointmentRow'
 import AppointmentsCalendarView from '../components/AppointmentsCalendarView'
 import { CalendarIcon, PlusIcon } from '../components/Icons'
+import ShareNotice from '../components/ShareNotice'
+import { shouldOfferShare } from '../utils/shareAppointment'
 
 function groupByDay(appointments) {
   const groups = []
@@ -37,6 +39,7 @@ function AppointmentsPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [warning, setWarning] = useState('')
+  const [shareOffer, setShareOffer] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingAppointment, setEditingAppointment] = useState(null)
   const [view, setView] = useState('list')
@@ -74,8 +77,10 @@ function AppointmentsPage() {
   }
 
   async function handleSaved(saved) {
+    const previous = editingAppointment
     closeForm()
     setWarning(saved.calendar_warning || '')
+    setShareOffer(shouldOfferShare(previous, saved) ? { appointment: saved, isNew: !previous } : null)
     await loadAppointments()
   }
 
@@ -118,6 +123,13 @@ function AppointmentsPage() {
       </div>
 
       {warning && <div className="alert alert-note">{warning}</div>}
+      {shareOffer && (
+        <ShareNotice
+          appointment={shareOffer.appointment}
+          isNew={shareOffer.isNew}
+          onClose={() => setShareOffer(null)}
+        />
+      )}
       {loadError && <div className="alert alert-error">{loadError}</div>}
 
       {loading ? (
