@@ -15,7 +15,7 @@ TIME_ZONE = "Asia/Jerusalem"
 
 
 def _event_title(customer_full_name: str) -> str:
-    return f"גלי לק ג'יל - {customer_full_name}"
+    return f"גלי לק ג'ל - {customer_full_name}"
 
 
 def _event_body(customer_full_name: str, start: datetime, end: datetime) -> dict:

@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 
     # Shown to customers on the shared "add to calendar" page and in the event
     # they add. An empty address leaves the event without a location.
-    business_name: str = "גלי לק ג'יל"
+    business_name: str = "גלי לק ג'ל"
     business_address: str = ""
 
     # Google Calendar. Both empty -> sync is off (appointments still save,

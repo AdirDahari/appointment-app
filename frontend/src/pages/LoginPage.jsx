@@ -23,7 +23,7 @@ function LoginPage({ onLoggedIn }) {
   return (
     <main className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <img className="login-logo" src="/logo.png" alt="גלי לק ג'יל" width="88" height="88" />
+        <img className="login-logo" src="/logo.png" alt="גלי לק ג'ל" width="88" height="88" />
         <h1 className="login-title">ניהול תורים</h1>
         <p className="login-sub">התחברי כדי להמשיך</p>
 

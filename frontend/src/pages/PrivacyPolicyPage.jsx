@@ -30,11 +30,11 @@ function PrivacyPolicyPage() {
   return (
     <main className="policy-page">
       <article className="policy-card">
-        <h1 className="policy-title">מדיניות פרטיות — גלי לק ג'יל</h1>
+        <h1 className="policy-title">מדיניות פרטיות — גלי לק ג'ל</h1>
         <p className="policy-updated">עדכון אחרון: 08/09/2026</p>
 
         <p className="policy-intro">
-          אפליקציה זו משמשת לניהול פנימי של קביעת תורים בעסק "גלי לק ג'יל".
+          אפליקציה זו משמשת לניהול פנימי של קביעת תורים בעסק "גלי לק ג'ל".
         </p>
 
         {SECTIONS.map((section) => (

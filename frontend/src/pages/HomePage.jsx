@@ -107,7 +107,7 @@ function HomePage({ onNavigate, username, onLogout }) {
           <p className="greeting-sub">{todayLabel}</p>
         </div>
         <div className="greeting-side">
-          <img className="greeting-logo" src="/logo.png" alt="גלי לק ג'יל" width="56" height="56" />
+          <img className="greeting-logo" src="/logo.png" alt="גלי לק ג'ל" width="56" height="56" />
           <button type="button" className="icon-btn" aria-label="הגדרות" onClick={() => setShowSettings(true)}>
             <GearIcon size={18} />
           </button>

@@ -1,4 +1,4 @@
-# גלי לק ג'יל — Appointment App
+# גלי לק ג'ל — Appointment App
 
 A small appointment-management app built for a single nail-studio owner. It
 keeps the customer directory and the appointment book, mirrors every appointment
